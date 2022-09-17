@@ -4,6 +4,8 @@
 #include <Adafruit_NeoPixel.h>
 #include <Average.h>
 #include <SparkFun_MicroPressure.h>
+#include "ER-EPM0154-2R.h"
+#include "epdpaint.h"
 
 SoftwareSerial log_serial(10, 9); // RX | TX
 
@@ -25,15 +27,20 @@ SoftwareSerial log_serial(10, 9); // RX | TX
 #define reset_lora 3
 #define sleep_up  1
 
+#define COLORED     0
+#define UNCOLORED   1
+
 String inputString = "";     // a String to hold incoming data
 bool stringComplete = false; // whether the string is complete
 String join_state = "";
 String cmd = "";
 String cmd_ask = "";
-float temp, humd, bat, presion;
 String date;
 String variables;
 
+double t, h, b,p;
+
+unsigned char image[200];
 
 unsigned long tiempo1 = 0;
 unsigned long tiempo2 = 0;
@@ -42,6 +49,9 @@ SHT31 sht31 = SHT31();
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 Average<float> ave(10);
 SparkFun_MicroPressure mpr;
+
+Paint paint(image, 0, 0);
+Epd epd;
 
 void setup()
 {
@@ -62,20 +72,21 @@ void setup()
   tiempo1 = millis();
 }
 
+
 void loop()
 {
 
-  //  while (log_serial.available())
+    //  while (log_serial.available())
   //  {
   //    char c = log_serial.read();
   //    Serial.print(c);
-  //  }
+  //  } 
 
   tiempo2 = millis();
 
-  if (tiempo2 > (tiempo1 + 10000)) {
+  if (tiempo2 > (tiempo1 + 5000)) {
     tiempo1 = millis(); //Actualiza el tiempo actual
-    theaterChase(strip.Color( 127,   0, 0 ), 5);
+    theaterChase(strip.Color( 127,   127, 0 ), 5);
     cmd_ask = "";
     cmd = "";
     log_serial.println("off time");
@@ -125,6 +136,10 @@ void loop()
 
     if (inputString.indexOf("Sleep") >= 0) {
       inputString = "";
+
+      init_epaper();
+      write_epaper();
+
       off_cpu();
     }
 
@@ -169,6 +184,57 @@ void loop()
 
 }
 
+void init_epaper() {
+  epd.Init();
+  epd.ClearFrameMemory();   // bit set = white, bit reset = black
+  paint.SetRotate(ROTATE_270);
+}
+
+
+void write_epaper() {
+
+  char temp [6];
+  dtostrf(t, 4, 1, temp);
+  temp[4] = '+'; temp[5] = ')';
+
+  char humd  [6] ;
+
+  dtostrf(h, 4, 1, humd);
+  humd[4] = '*';
+  double pe;
+  //pe=p*4.019;
+  pe=p;
+  char pres [6];
+  dtostrf(pe, 4, 1, pres);
+  //pres[5] = '*';
+
+  char *p_t = temp;
+  char *p_h = humd;
+  char *p_p = pres;
+
+  paint.SetWidth(48);
+  paint.SetHeight(160);
+  paint.Clear(UNCOLORED);
+  paint.DrawStringAt(0, 0, p_t , &Font24, COLORED); //
+  epd.SetFrameMemoryBlack(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
+
+  paint.SetWidth(48);
+  paint.SetHeight(135);
+  paint.Clear(UNCOLORED);
+  paint.DrawStringAt(0, 0, p_h, &Font24, COLORED);
+  epd.SetFrameMemoryBlack(paint.GetImage(), 70, 0, paint.GetWidth(), paint.GetHeight());
+
+  paint.SetWidth(48);
+  paint.SetHeight(160);
+  paint.Clear(UNCOLORED);
+  paint.DrawStringAt(0, 0, p_p, &Font24, COLORED);
+  epd.SetFrameMemoryBlack(paint.GetImage(), 140, 0, paint.GetWidth(), paint.GetHeight());
+
+
+  epd.DisplayFrame();
+
+}
+
 void join()
 {
   cmd = join_cmd;
@@ -184,34 +250,34 @@ void cmsg()// funcion de envio de datos al gateway
 
 
   variables.concat("Temp: ");
-  variables.concat(temp);
+  variables.concat(t);
   variables.concat(" Humd: ");
-  variables.concat(humd);
+  variables.concat(h);
   variables.concat(" Bat: ");
-  variables.concat(bat);
+  variables.concat(b);
   variables.concat(" Presion: ");
-  variables.concat(presion);
+  variables.concat(p);
 
   //  String variables = variables + "Temp: " + temp + " Humd: " + humd + " Bat: " + bat;
   //
   log_serial.println(variables);
 
-  uint16_t t = temp * 100;
-  uint16_t h = humd * 100;
-  uint16_t v = bat * 100;
-  uint16_t p = presion * 100;
+  uint16_t te = t * 100;
+  uint16_t he = h* 100;
+  uint16_t ve = b * 100;
+  uint16_t pe = p * 100;
 
-  byte_data[i++] = (uint8_t)(t >> 8);
-  byte_data[i++] = (uint8_t)t;
+  byte_data[i++] = (uint8_t)(te >> 8);
+  byte_data[i++] = (uint8_t)te;
 
-  byte_data[i++] = (uint8_t)(h >> 8);
-  byte_data[i++] = (uint8_t)h;
+  byte_data[i++] = (uint8_t)(he >> 8);
+  byte_data[i++] = (uint8_t)he;
 
-  byte_data[i++] = (uint8_t)(v >> 8);
-  byte_data[i++] = (uint8_t)v;
+  byte_data[i++] = (uint8_t)(ve >> 8);
+  byte_data[i++] = (uint8_t)ve;
 
-  byte_data[i++] = (uint8_t)(p >> 8);
-  byte_data[i++] = (uint8_t)p;
+  byte_data[i++] = (uint8_t)(pe >> 8);
+  byte_data[i++] = (uint8_t)pe;
 
   char str[10] = "";
 
@@ -242,22 +308,22 @@ void serialEvent()
 void read_variable()// funcion de lectura de variables
 {
 
-  presion = mpr.readPressure(KPA);
+  p = mpr.readPressure(KPA);
   delay(50);
-  temp = sht31.getTemperature();
+  t = sht31.getTemperature();
   delay(50);
-  humd = sht31.getHumidity();
+  h = sht31.getHumidity();
   delay(50);
 
   for (int i = 0; i < 10; i++) {
-    bat = analogRead(vbatpin);
-    bat *= 2;    // we divided by 2, so multiply back
-    bat *= 3.3;  // Multiply by 3.3V, our reference voltage
-    bat /= 1024; // convert to voltage
-    ave.push(bat);
+    b = analogRead(vbatpin);
+    b *= 2;    // we divided by 2, so multiply back
+    b *= 3.3;  // Multiply by 3.3V, our reference voltage
+    b /= 1024; // convert to voltage
+    ave.push(b);
   }
 
-  bat = ave.mean();
+  b = ave.mean();
 }
 
 void off_cpu()
