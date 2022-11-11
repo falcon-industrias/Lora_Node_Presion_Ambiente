@@ -202,8 +202,8 @@ void write_epaper() {
   dtostrf(h, 4, 1, humd);
   humd[4] = '*';
   double pe;
-  //pe=p*4.019;
-  pe=p;
+  pe=p*4.019;
+  //pe=p;
   char pres [6];
   dtostrf(pe, 4, 1, pres);
   //pres[5] = '*';
@@ -308,7 +308,7 @@ void serialEvent()
 void read_variable()// funcion de lectura de variables
 {
 
-  p = mpr.readPressure(KPA);
+  p = mpr.readPressure(KPA) - 0.24;
   delay(50);
   t = sht31.getTemperature();
   delay(50);
