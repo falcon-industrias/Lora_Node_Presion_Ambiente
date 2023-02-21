@@ -248,7 +248,6 @@ void cmsg()// funcion de envio de datos al gateway
   uint8_t byte_data[10];
   int8_t  i = 0;
 
-
   variables.concat("Temp: ");
   variables.concat(t);
   variables.concat(" Humd: ");
