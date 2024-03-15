@@ -202,8 +202,8 @@ void write_epaper() {
   dtostrf(h, 4, 1, humd);
   humd[4] = '*';
   double pe;
-  pe=p*4.019;
-  //pe=p;
+  //pe=p*4.019;
+  pe=p;
   char pres [6];
   dtostrf(pe, 4, 1, pres);
   //pres[5] = '*';
@@ -229,7 +229,6 @@ void write_epaper() {
   paint.Clear(UNCOLORED);
   paint.DrawStringAt(0, 0, p_p, &Font24, COLORED);
   epd.SetFrameMemoryBlack(paint.GetImage(), 140, 0, paint.GetWidth(), paint.GetHeight());
-
 
   epd.DisplayFrame();
 
@@ -307,7 +306,7 @@ void serialEvent()
 void read_variable()// funcion de lectura de variables
 {
 
-  p = mpr.readPressure(KPA) - 0.24;
+  p = mpr.readPressure(KPA)  ;
   delay(50);
   t = sht31.getTemperature();
   delay(50);
